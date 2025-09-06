@@ -3,6 +3,7 @@
 import { useEffect, useMemo, useState } from 'react'
 import { AnimatePresence, motion } from 'framer-motion'
 import { ChevronDown, ChevronRight, Download, Save, Check } from 'lucide-react'
+import * as XLSX from 'xlsx'
 
 // Données des étapes (7 stages)
 const STAGES = [
@@ -302,6 +303,45 @@ export default function App() {
     URL.revokeObjectURL(url)
   }
 
+  const handleExportExcel = () => {
+    // Build rows for Summary sheet
+    const summaryRows = [
+      ['Score total', `${totals.totalScore} / ${totals.maxScore}`],
+      ['Checklist complétée', `${totals.completedChecks} / ${totals.totalChecks}`],
+      ['Items restants', totals.remainingChecks],
+      ['Généré le', new Date().toLocaleString()],
+      ['Application', 'Table d’Évaluation de Script'],
+    ]
+
+    // Build rows for Details sheet
+    const detailsHeader = ['Étape', 'Titre', 'Critère', 'Coché', 'Score Étape', 'Commentaires']
+    const detailsRows = [detailsHeader]
+
+    STAGES.forEach((stage, i) => {
+      const st = stages[i]
+      stage.criterias.forEach((crit, idx) => {
+        detailsRows.push([
+          i + 1,
+          stage.title,
+          crit,
+          st.checks[idx] ? 'Oui' : 'Non',
+          st.score || '',
+          idx === 0 ? st.comments : '',
+        ])
+      })
+    })
+
+    const wb = XLSX.utils.book_new()
+    const wsSummary = XLSX.utils.aoa_to_sheet(summaryRows)
+    const wsDetails = XLSX.utils.aoa_to_sheet(detailsRows)
+
+    XLSX.utils.book_append_sheet(wb, wsSummary, 'Résumé')
+    XLSX.utils.book_append_sheet(wb, wsDetails, 'Détails')
+
+    const fileName = `audit-evaluation-${new Date().toISOString().slice(0,19).replaceAll(':','-')}.xlsx`
+    XLSX.writeFile(wb, fileName)
+  }
+
   const handleSave = () => {
     localStorage.setItem('audit-evaluation', JSON.stringify(stages))
   }
@@ -324,6 +364,9 @@ export default function App() {
           </Button>
           <Button variant="outline" onClick={handleExport} className="sm:w-auto w-full">
             <Download className="h-4 w-4" /> Exporter en JSON
+          </Button>
+          <Button variant="outline" onClick={handleExportExcel} className="sm:w-auto w-full">
+            <Download className="h-4 w-4" /> Exporter en Excel
           </Button>
         </div>
 
@@ -383,6 +426,9 @@ export default function App() {
               </Button>
               <Button variant="outline" onClick={handleExport} className="sm:w-auto w-full">
                 <Download className="h-4 w-4" /> Exporter en JSON
+              </Button>
+              <Button variant="outline" onClick={handleExportExcel} className="sm:w-auto w-full">
+                <Download className="h-4 w-4" /> Exporter en Excel
               </Button>
             </div>
           </CardContent>
